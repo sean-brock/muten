@@ -2,9 +2,11 @@
 # show up in IDEs unless they are listed in add_library.
 
 # Optionally glob, but only for CMake 3.12 or later:
-file(GLOB HEADER_LIST CONFIGURE_DEPENDS "${mutenProject_SOURCE_DIR}/include/muten/*.hpp")
+file(GLOB HEADER_LIST CONFIGURE_DEPENDS 
+"${PROJECT_SOURCE_DIR}/include/muten/*.hpp"
+)
 
-add_library(muten_library SHARED ${HEADER_LIST})
+add_library(muten_library SHARED backend/cpu.cpp ${HEADER_LIST})
 
 # We need this directory, and users of our library will need it too
 target_include_directories(muten_library PUBLIC ../include)

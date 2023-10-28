@@ -5,60 +5,74 @@
 #include <numeric>
 #include <vector>
 
-#include "cpu_device.hpp"
+#include "device.hpp"
 namespace muten {
 
-template <typename T>
+template <typename T, Backend backend>
 class Tensor {
  public:
-  Tensor(const std::vector<int>& sizes)
+  Tensor(int device_index, const std::vector<int>& sizes)
       : _sizes(sizes),
         _strides(_sizes),
-        _size(0),
-        _device(CpuDevice()),
-        _data(nullptr) {
-    _size = std::reduce(_sizes.begin(), _sizes.end(), 0, std::multiplies<T>{});
+        _size(
+            std::reduce(_sizes.begin(), _sizes.end(), 0, std::multiplies<T>{})),
+
+        _data(nullptr),
+        _device_index(device_index) {
     std::size_t bytes = _size * sizeof(T);
-    _data = _device.allocate(bytes);
+    T* raw_data = static_cast<T*>(allocate<backend>(device_index, bytes));
+    auto deleter = [device_index](T* ptr) {
+      free<backend>(device_index, static_cast<void*>(ptr));
+    };
+    _data = std::shared_ptr<T>(raw_data, deleter);
   }
-  ~Tensor() { _device.free(_data); }
-  T* data() noexcept;
+
+  // Tensor(const Tensor& tensor)
+  //     : _sizes(tensor._sizes),
+  //       _size(tensor._size),
+  //       _strides(tensor._strides),
+  //       _device(tensor._device) {}
+
+  virtual ~Tensor() = default;
+
+  inline T* data() noexcept { return _data.get(); }
+  inline const T* data() const noexcept { return _data.get(); }
+  inline const std::vector<int>& dim() const noexcept { return _sizes; }
+  inline std::size_t num_elements() const noexcept { return _size; }
+  inline const std::vector<int> stride() const noexcept { return _strides; }
 
  private:
   const std::vector<int> _sizes;
   const std::size_t _size;
   const std::vector<int> _strides;
-  Device _device;
-  T* _data;
+  std::shared_ptr<T> _data;
+  const int _device_index;
 };
 
-template <typename T>
-T* begin(Tensor<T>& t) {
+template <typename T, Backend backend>
+T* begin(Tensor<T, backend>& t) {
   return t.data();
 }
 
-template <typename T>
-const T* cbegin(const Tensor<T>& t) {
+template <typename T, Backend backend>
+const T* cbegin(const Tensor<T, backend>& t) {
   return t.data();
 }
 
-template <typename T>
-T* end(Tensor<T>& t) {
+template <typename T, Backend backend>
+T* end(Tensor<T, backend>& t) {
   return t.data() + t.size();
 }
 
-template <typename T>
-const T* cend(const Tensor<T>& t) {
+template <typename T, Backend backend>
+const T* cend(const Tensor<T, backend>& t) {
   return t.data() + t.size();
 }
 
 namespace tensor {
-template <typename T>
-Tensor<T> zeros(const std::vector<int>& sizes) {
-  auto tensor = Tensor<T>(sizes);
-  for (auto& elem : tensor) {
-    elem = 0;
-  }
+template <typename T, Backend backend>
+Tensor<T, backend> zeros(int device_index, const std::vector<int>& sizes) {
+  auto tensor = Tensor<T, backend>(device_index, sizes);
   return tensor;
 }
 
