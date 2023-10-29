@@ -1,22 +1,25 @@
-#ifndef MUTEN_DEVICE_HPP
-#define MUTEN_DEVICE_HPP
+#ifndef MUTEN_BACKEND_HPP
+#define MUTEN_BACKEND_HPP
 
 #include <cstdlib>
 
 namespace muten {
 
-// Backend specific implementations
+class Backend {
+ public:
+  Backend(int index) : _index(index) {}
+  virtual void *allocate(std::size_t n) = 0;
+  virtual void free(void *mem) = 0;
+  virtual void memset(void *mem, int c, std::size_t n) = 0;
+  virtual void memcpy(void *dest, void *src, std::size_t n) = 0;
 
-enum class Backend {
-#ifdef MUTEN_BACKEND_HIP
-  HIP,
-#endif
-#ifdef MUTEN_BACKEND_CUDA
-  CUDA,
-#endif
-  CPU
+  inline int index() const { return _index; }
+
+ private:
+  const int _index;
 };
 
+// Backend specific implementations
 #ifdef MUTEN_BACKEND_HIP
 #include "muten/devices/hip.hpp"
 #endif
@@ -24,17 +27,6 @@ enum class Backend {
 #include "muten/devices/cuda.hpp"
 #endif
 
-template <Backend>
-void *allocate(int index, std::size_t n);
-
-template <Backend>
-void free(int index, void *mem);
-
-template <>
-void *allocate<Backend::CPU>(int index, std::size_t n);
-
-template <>
-void free<Backend::CPU>(int index, void *mem);
 };  // namespace muten
 #endif
 /*
@@ -56,4 +48,8 @@ return t2;
 //
 
 dev.createTensor[b]
+
+
+// Create on device
+//
 */

@@ -5,33 +5,27 @@
 #include <numeric>
 #include <vector>
 
-#include "device.hpp"
+#include "backend/backend.hpp"
 namespace muten {
 
-template <typename T, Backend backend>
+template <typename T>
 class Tensor {
  public:
-  Tensor(int device_index, const std::vector<int>& sizes)
+  Tensor(const std::shared_ptr<Backend>& backend, const std::vector<int>& sizes)
       : _sizes(sizes),
         _strides(_sizes),
         _size(
             std::reduce(_sizes.begin(), _sizes.end(), 0, std::multiplies<T>{})),
 
         _data(nullptr),
-        _device_index(device_index) {
+        _backend(backend) {
     std::size_t bytes = _size * sizeof(T);
-    T* raw_data = static_cast<T*>(allocate<backend>(device_index, bytes));
-    auto deleter = [device_index](T* ptr) {
-      free<backend>(device_index, static_cast<void*>(ptr));
+    T* raw_data = static_cast<T*>(_backend->allocate(bytes));
+    auto deleter = [b = this->_backend](T* ptr) {
+      b->free(static_cast<void*>(ptr));
     };
     _data = std::shared_ptr<T>(raw_data, deleter);
   }
-
-  // Tensor(const Tensor& tensor)
-  //     : _sizes(tensor._sizes),
-  //       _size(tensor._size),
-  //       _strides(tensor._strides),
-  //       _device(tensor._device) {}
 
   virtual ~Tensor() = default;
 
@@ -46,33 +40,37 @@ class Tensor {
   const std::size_t _size;
   const std::vector<int> _strides;
   std::shared_ptr<T> _data;
-  const int _device_index;
+  std::shared_ptr<Backend> _backend;
 };
 
-template <typename T, Backend backend>
-T* begin(Tensor<T, backend>& t) {
+template <typename T>
+T* begin(Tensor<T>& t) {
   return t.data();
 }
 
-template <typename T, Backend backend>
-const T* cbegin(const Tensor<T, backend>& t) {
+template <typename T>
+const T* cbegin(const Tensor<T>& t) {
   return t.data();
 }
 
-template <typename T, Backend backend>
-T* end(Tensor<T, backend>& t) {
+template <typename T>
+T* end(Tensor<T>& t) {
   return t.data() + t.size();
 }
 
-template <typename T, Backend backend>
-const T* cend(const Tensor<T, backend>& t) {
+template <typename T>
+const T* cend(const Tensor<T>& t) {
   return t.data() + t.size();
 }
 
 namespace tensor {
-template <typename T, Backend backend>
-Tensor<T, backend> zeros(int device_index, const std::vector<int>& sizes) {
-  auto tensor = Tensor<T, backend>(device_index, sizes);
+template <typename T>
+Tensor<T> zeros(std::shared_ptr<Backend>& backend,
+                const std::vector<int>& sizes) {
+  auto tensor = Tensor<T>(backend, sizes);
+  const std::size_t num_bytes = sizeof(T) * tensor.num_elements();
+  backend->memset(tensor.data(), 0, num_bytes);
+
   return tensor;
 }
 
