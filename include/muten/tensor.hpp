@@ -5,42 +5,36 @@
 #include <numeric>
 #include <vector>
 
-#include "backend/backend.hpp"
+#include "allocator.hpp"
+#include "device.hpp"
 namespace muten {
 
 template <typename T>
 class Tensor {
  public:
-  Tensor(const std::shared_ptr<Backend>& backend, const std::vector<int>& sizes)
-      : _sizes(sizes),
-        _strides(_sizes),
-        _size(
-            std::reduce(_sizes.begin(), _sizes.end(), 0, std::multiplies<T>{})),
-
-        _data(nullptr),
-        _backend(backend) {
-    std::size_t bytes = _size * sizeof(T);
-    T* raw_data = static_cast<T*>(_backend->allocate(bytes));
-    auto deleter = [b = this->_backend](T* ptr) {
-      b->free(static_cast<void*>(ptr));
-    };
-    _data = std::shared_ptr<T>(raw_data, deleter);
-  }
+  Tensor(const Device& device, const std::vector<int>& dim)
+      : _device(device),
+        _dim(dim),
+        _strides(),
+        _size(std::reduce(_dim.begin(), _dim.end(), 0, std::multiplies<T>{})),
+        _allocator(get_allocator(_device.type)),
+        _data(_allocator->allocate(_device.index, _size * sizeof(T))) {}
 
   virtual ~Tensor() = default;
 
   inline T* data() noexcept { return _data.get(); }
   inline const T* data() const noexcept { return _data.get(); }
-  inline const std::vector<int>& dim() const noexcept { return _sizes; }
+  inline const std::vector<int>& dim() const noexcept { return _dim; }
   inline std::size_t num_elements() const noexcept { return _size; }
   inline const std::vector<int> stride() const noexcept { return _strides; }
 
  private:
-  const std::vector<int> _sizes;
-  const std::size_t _size;
+  const Device _device;
+  const std::vector<int> _dim;
   const std::vector<int> _strides;
+  const std::size_t _size;
+  Allocator* _allocator;
   std::shared_ptr<T> _data;
-  std::shared_ptr<Backend> _backend;
 };
 
 template <typename T>
@@ -65,12 +59,8 @@ const T* cend(const Tensor<T>& t) {
 
 namespace tensor {
 template <typename T>
-Tensor<T> zeros(std::shared_ptr<Backend>& backend,
-                const std::vector<int>& sizes) {
-  auto tensor = Tensor<T>(backend, sizes);
-  const std::size_t num_bytes = sizeof(T) * tensor.num_elements();
-  backend->memset(tensor.data(), 0, num_bytes);
-
+Tensor<T> zeros(const Device& device, const std::vector<int>& dim) {
+  auto tensor = Tensor<T>(device, dim);
   return tensor;
 }
 
