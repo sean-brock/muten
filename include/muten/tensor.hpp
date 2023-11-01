@@ -7,7 +7,11 @@
 
 #include "allocator.hpp"
 #include "device.hpp"
+
 namespace muten {
+namespace tensor_util {
+static std::vector<int> generate_strides(const std::vector<int>& dim);
+};
 
 template <typename T>
 class Tensor {
@@ -15,7 +19,7 @@ class Tensor {
   Tensor(const Device& device, const std::vector<int>& dim)
       : _device(device),
         _dim(dim),
-        _strides(),
+        _strides(tensor_util::generate_strides(_dim)),
         _size(std::reduce(_dim.begin(), _dim.end(), 0, std::multiplies<T>{})),
         _allocator(get_allocator(_device.type)),
         _data(_allocator->allocate(_device.index, _size * sizeof(T))) {}
@@ -26,7 +30,7 @@ class Tensor {
   inline const T* data() const noexcept { return _data.get(); }
   inline const std::vector<int>& dim() const noexcept { return _dim; }
   inline std::size_t num_elements() const noexcept { return _size; }
-  inline const std::vector<int> stride() const noexcept { return _strides; }
+  inline const std::vector<int> strides() const noexcept { return _strides; }
 
  private:
   const Device _device;
@@ -34,7 +38,7 @@ class Tensor {
   const std::vector<int> _strides;
   const std::size_t _size;
   Allocator* _allocator;
-  std::shared_ptr<T> _data;
+  std::unique_ptr<T> _data;
 };
 
 template <typename T>
@@ -43,18 +47,8 @@ T* begin(Tensor<T>& t) {
 }
 
 template <typename T>
-const T* cbegin(const Tensor<T>& t) {
-  return t.data();
-}
-
-template <typename T>
 T* end(Tensor<T>& t) {
-  return t.data() + t.size();
-}
-
-template <typename T>
-const T* cend(const Tensor<T>& t) {
-  return t.data() + t.size();
+  return t.data() + t.num_elements();
 }
 
 namespace tensor {
