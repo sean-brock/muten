@@ -8,6 +8,8 @@ enum class DeviceType {
 #endif
   CPU
 };
+
+const char * to_string(const DeviceType &d);
 };  // namespace muten
 
 #endif

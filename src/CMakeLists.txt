@@ -6,7 +6,7 @@ file(GLOB HEADER_LIST CONFIGURE_DEPENDS
 "${PROJECT_SOURCE_DIR}/include/muten/*.hpp"
 )
 
-add_library(muten_library SHARED tensor.cpp ${HEADER_LIST})
+add_library(muten_library SHARED allocator.cpp device_type.cpp tensor.cpp ${HEADER_LIST})
 
 # We need this directory, and users of our library will need it too
 target_include_directories(muten_library PUBLIC ../include)

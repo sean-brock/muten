@@ -1,8 +1,7 @@
 #include <muten/tensor.hpp>
 
-using namespace muten;
-
-std::vector<int> tensor_util::generate_strides(const std::vector<int> &dim) {
+std::vector<int> muten::tensor_util::generate_strides(
+    const std::vector<int> &dim) {
   if (dim.size() == 0) return {0};
   if (dim.size() == 1) return {1};
 
