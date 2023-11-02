@@ -10,6 +10,7 @@
 
 namespace muten {
 namespace tensor_util {
+std::size_t num_elements(const std::vector<int>& dim);
 std::vector<int> generate_strides(const std::vector<int>& dim);
 };
 
@@ -20,7 +21,7 @@ class Tensor {
       : _device(device),
         _dim(dim),
         _strides(tensor_util::generate_strides(_dim)),
-        _size(std::reduce(_dim.begin(), _dim.end(), 1, std::multiplies<T>{})),
+        _size(tensor_util::num_elements(_dim)),
         _allocator(get_allocator(_device.type)),
         _data(_allocator->allocate(_device.index, _size * sizeof(T))) {}
 
